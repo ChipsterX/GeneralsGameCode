@@ -780,24 +780,28 @@ void W3DTreeBuffer::loadTreesInVertexAndIndexBuffers(RefRenderObjListIterator *p
 			REF_PTR_RELEASE(matInfo);
 
 
-			Int startVertex = m_curNumTreeVertices[bNdx];
-			m_trees[curTree].firstIndex = startVertex;
-			m_trees[curTree].bufferNdx = bNdx;
 			Int i;
 			Int numVertex = m_treeTypes[type].m_mesh->Peek_Model()->Get_Vertex_Count();
 			Vector3 *pVert = m_treeTypes[type].m_mesh->Peek_Model()->Get_Vertex_Array();
 
 
+			Int numIndex = m_treeTypes[type].m_mesh->Peek_Model()->Get_Polygon_Count();
 
 			// If we happen to have too many trees, stop.
+			// Chipi @info The check is done before the tree is assigned to the buffer,
+			// so a tree that does not fit is not drawn with the data of another tree.
 			if (m_curNumTreeVertices[bNdx]+numVertex+2>= MAX_TREE_VERTEX) {
 				break;
 			}
-			Int numIndex = m_treeTypes[type].m_mesh->Peek_Model()->Get_Polygon_Count();
-			const TriIndex *pPoly = m_treeTypes[type].m_mesh->Peek_Model()->Get_Polygon_Array();
 			if (m_curNumTreeIndices[bNdx]+3*numIndex+6 >= MAX_TREE_INDEX) {
 				break;
 			}
+
+			Int startVertex = m_curNumTreeVertices[bNdx];
+			m_trees[curTree].firstIndex = startVertex;
+			m_trees[curTree].bufferNdx = bNdx;
+
+			const TriIndex *pPoly = m_treeTypes[type].m_mesh->Peek_Model()->Get_Polygon_Array();
 
 			const Vector2*uvs=m_treeTypes[type].m_mesh->Peek_Model()->Get_UV_Array_By_Index(0);
 
@@ -950,11 +954,17 @@ void W3DTreeBuffer::updateVertexBuffer()
 			DEBUG_ASSERTCRASH(type>=0 && m_treeTypes[type].m_mesh!=nullptr, ("Invalid tree type or mesh."));
 
 			Int startVertex = m_trees[curTree].firstIndex;
-			curVb = vb+startVertex;
-			Int i;
 			Int numVertex = m_treeTypes[type].m_mesh->Peek_Model()->Get_Vertex_Count();
 			Vector3 *pVert = m_treeTypes[type].m_mesh->Peek_Model()->Get_Vertex_Array();
 
+			// Chipi @fix Never write past the end of the vertex buffer.
+			// A tree that did not fit into the buffer has a first index that is out of range.
+			if (startVertex < 0 || startVertex + numVertex > MAX_TREE_VERTEX) {
+				continue;
+			}
+			curVb = vb+startVertex;
+
+			Int i;
 			for (i=0; i<numVertex; i++) {
 				Real x = pVert[i].X;
 				Real y = pVert[i].Y;
