@@ -268,6 +268,8 @@ private:
 
 	ScriptedState m_scriptedState; ///< Flags for scripted camera movements. Use functions addScriptedState, removeScriptedState for write.
 
+	Real m_scriptedMaxHeightAboveGround;	///< The maximum camera height of the scripted camera. It is the retail value, so the cutscenes are not affected by the camera settings of the player.
+
 	TRotateCameraInfo m_rcInfo;
 	TPitchCameraInfo m_pcInfo;
 	TZoomCameraInfo m_zcInfo;
@@ -305,6 +307,10 @@ private:
 	Real getDesiredZoom(Real x, Real y) const;
 	Real getMaxHeight(Real x, Real y) const;
 	Real getMaxZoom(Real x, Real y) const;
+	// Chipi @feature The camera pitch related limits. The camera orbits the look-at
+	// target, so the camera height above the ground changes with the camera pitch.
+	Real getMinCameraPitch() const;				///< The lowest camera pitch that the player can set.
+	Real getMaxCameraPitch() const;				///< The highest camera pitch that the player can set.
 	void updateCameraTransform(); ///< update the transform matrix of m_3DCamera, based on m_pos & m_angle
 	void updateCameraClipPlanes(const Matrix3D &transform);
 	void setCameraTransform(const Matrix3D &transform);

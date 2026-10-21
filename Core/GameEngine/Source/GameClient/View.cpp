@@ -29,6 +29,7 @@
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 
 #include "Common/GameEngine.h"
+#include "Common/GlobalData.h"
 #include "Common/Xfer.h"
 #include "GameClient/Drawable.h"
 #include "GameClient/GameClient.h"
@@ -195,6 +196,26 @@ void View::setAngleToDefault()
 void View::setPitchToDefault()
 {
 	m_pitch = m_defaultPitch;
+}
+
+//-------------------------------------------------------------------------------------------------
+// Chipi @feature The camera geometry is calculated relative to the camera pitch that is
+// configured with the CameraPitch setting in the GameData.ini. This is the camera pitch at which
+// the camera height above the ground is equal to the desired camera height above the ground.
+//-------------------------------------------------------------------------------------------------
+Real View::getReferenceCameraPitch()
+{
+	return DEG_TO_RADF(TheGlobalData->m_cameraPitch);
+}
+
+//-------------------------------------------------------------------------------------------------
+// Chipi @feature The camera geometry is calculated relative to the camera yaw that is
+// configured with the CameraYaw setting in the GameData.ini. This is the camera yaw at which
+// the camera is in its default orientation.
+//-------------------------------------------------------------------------------------------------
+Real View::getReferenceCameraYaw()
+{
+	return DEG_TO_RADF(TheGlobalData->m_cameraYaw);
 }
 
 void View::setHeightAboveGround(Real z)

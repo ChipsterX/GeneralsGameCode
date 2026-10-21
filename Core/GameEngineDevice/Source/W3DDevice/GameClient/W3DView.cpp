@@ -104,6 +104,15 @@ static const Real DRAWABLE_OVERSCAN = 75.0f;  ///< 3D world coords of how much t
 
 constexpr const Real NearZ = MAP_XY_FACTOR; ///< Set the near to MAP_XY_FACTOR. Improves z buffer resolution.
 
+// TheSuperHackers @feature The clearance that the camera keeps from the trees and props next
+// to it, so they are not cut off by the near clip plane.
+constexpr const Real CAMERA_OBJECT_CLEARANCE = 40.0f;
+
+// TheSuperHackers @feature The lowest camera pitch that the player can set. A camera that
+// looks almost at the horizon breaks the minimap and the near clip plane cuts the trees
+// and props next to the camera.
+constexpr const Real CAMERA_MIN_PITCH = DEG_TO_RADF(25.0f);
+
 //-------------------------------------------------------------------------------------------------
 // Normalizes angle to +- PI.
 //-------------------------------------------------------------------------------------------------
@@ -268,7 +277,7 @@ void W3DView::buildCameraPosition( Vector3& sourcePos, Vector3& targetPos )
 {
 	const Real zoom = getZoom();
 	const Real angle = getAngle();
-	const Real pitch = getPitch();
+	Real pitch = getPitch();
 	Coord3D pos = getPosition();
 
 	// add in the camera shake, if any
@@ -277,9 +286,25 @@ void W3DView::buildCameraPosition( Vector3& sourcePos, Vector3& targetPos )
 
 	// TheSuperHackers @info The default pitch affects the look-at distance to the target.
 	// This is strange math which would need special attention when changed.
+	// Chipi @feature The reference angles define the camera geometry.
+	// The player camera is calculated relative to the camera angles from the GameData.ini,
+	// so that the player can configure them with the CameraPitch and CameraYaw settings.
+	// The scripted camera is calculated relative to the retail reference angles, so that the
+	// cutscenes look exactly the same as they do in the retail game. Same as the scripted
+	// camera height, which is calculated with the CameraHeight setting.
+	Real referencePitch = getReferenceCameraPitch();
+	Real referenceYaw = getReferenceCameraYaw();
+#if PRESERVE_RETAIL_SCRIPTED_CAMERA
+	if (!m_isUserControlled)
+	{
+		referencePitch = ViewDefaultPitchRadians;
+		referenceYaw = ViewDefaultYawRadians;
+		pitch = ViewDefaultPitchRadians;
+	}
+#endif
 	sourcePos.Z = getCameraOffsetZ();
-	sourcePos.Y = -(sourcePos.Z / tan(ViewDefaultPitchRadians));
-	sourcePos.X = -(sourcePos.Y * tan(ViewDefaultYawRadians));
+	sourcePos.Y = -(sourcePos.Z / tan(referencePitch));
+	sourcePos.X = -(sourcePos.Y * tan(referenceYaw));
 
 	// set position of camera itself
 	if (m_useRealZoomCam) //WST 10/10/2002 Real Zoom using FOV
@@ -300,10 +325,10 @@ void W3DView::buildCameraPosition( Vector3& sourcePos, Vector3& targetPos )
 	const Real heightScale = 1.0f - (pos.z / sourcePos.Z);
 
 	// construct a matrix to rotate around the up vector by the given angle
-	const Matrix3D angleTransform( Vector3( 0.0f, 0.0f, 1.0f ), angle - ViewDefaultYawRadians );
+	const Matrix3D angleTransform( Vector3( 0.0f, 0.0f, 1.0f ), angle - referenceYaw );
 
 	// construct a matrix to rotate around the left vector by the given angle
-	const Matrix3D pitchTransform( Vector3( -1.0f, 0.0f, 0.0f ), pitch - ViewDefaultPitchRadians );
+	const Matrix3D pitchTransform( Vector3( -1.0f, 0.0f, 0.0f ), pitch - referencePitch );
 
 	// rotate camera position (pitch, then angle)
 #ifdef ALLOW_TEMPORARIES
@@ -695,7 +720,9 @@ Real W3DView::getMaxHeight(Real x, Real y) const
 #if PRESERVE_RETAIL_SCRIPTED_CAMERA
 	if (!m_isUserControlled)
 	{
-		return getHeightAroundPos(x, y) + m_maxHeightAboveGround;
+		// Chipi @feature The scripted camera uses the retail maximum camera height, so that the
+		// cutscenes are not affected by the camera height that the player has configured.
+		return getHeightAroundPos(x, y) + m_scriptedMaxHeightAboveGround;
 	}
 #endif
 
@@ -714,6 +741,50 @@ Real W3DView::getDesiredZoom(Real x, Real y) const
 Real W3DView::getMaxZoom(Real x, Real y) const
 {
 	return getMaxHeight(x, y) / getCameraOffsetZ();
+}
+
+//-------------------------------------------------------------------------------------------------
+// Chipi @feature The lowest camera pitch is derived from the minimum and the maximum
+// camera height. It prevents the camera from being tilted so far down that it would sink into
+// the terrain.
+// The camera must also keep a clearance from the trees and props next to it, or they get
+// cut off by the near clip plane.
+//-------------------------------------------------------------------------------------------------
+Real W3DView::getMinCameraPitch() const
+{
+	if (m_maxHeightAboveGround <= 0.0f)
+	{
+		return DEG_TO_RADF(0.1f);
+	}
+
+	// The camera height above the ground must be at least the minimum camera height.
+	const Real sinPitchFromHeight = clamp(0.0f,
+		m_minHeightAboveGround * WWMath::Sin(getReferenceCameraPitch()) / m_maxHeightAboveGround,
+		1.0f);
+
+	// The camera height above the ground scales with the sine of the camera pitch. The distance
+	// of the ground next to the camera along the view direction scales with the sine of the
+	// camera pitch too, and it must be greater than the near clip plane, or the trees and
+	// props next to the camera get cut off.
+	Real sinPitchFromClearance = 0.0f;
+	if (m_heightAboveGround > 0.0f)
+	{
+		sinPitchFromClearance = sqrt(clamp(0.0f,
+			(NearZ + CAMERA_OBJECT_CLEARANCE) * WWMath::Sin(getReferenceCameraPitch()) / m_heightAboveGround,
+			1.0f));
+	}
+
+	const Real minPitch = std::max(std::max(WWMath::Asin(sinPitchFromHeight), WWMath::Asin(sinPitchFromClearance)), CAMERA_MIN_PITCH);
+	return std::min(minPitch, getMaxCameraPitch());
+}
+
+//-------------------------------------------------------------------------------------------------
+// Chipi @feature The camera cannot be tilted straight above the look-at target,
+// because the camera would be inside the terrain.
+//-------------------------------------------------------------------------------------------------
+Real W3DView::getMaxCameraPitch() const
+{
+	return DEG_TO_RADF(89.9f);
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -855,6 +926,11 @@ void W3DView::init()
 	// extend View functionality
 	View::init();
 	setName("W3DView");
+
+	// Chipi @feature The scripted camera uses the retail maximum camera height, so that the
+	// cutscenes are not affected by the camera height that the player has configured.
+	m_scriptedMaxHeightAboveGround = ViewDefaultMaxHeightAboveTerrain;
+
 	// set default camera "look at" point
 	Coord3D pos;
 	pos.x = 87.0f * MAP_XY_FACTOR;
@@ -2180,8 +2256,15 @@ void W3DView::setAngle( Real radians )
 //-------------------------------------------------------------------------------------------------
 /** Rotate the view around the horizontal (X) axis to the given angle. */
 //-------------------------------------------------------------------------------------------------
+// Chipi @feature The camera pitch can now be changed by the player. The camera zoom is
+// not touched, so the camera keeps its distance to the look-at target and only the tilt changes.
+// The camera orbits the look-at target, so the camera height above the ground changes with the
+// camera pitch, while the distance to the target stays the same.
 void W3DView::setPitch( Real radians )
 {
+	// Limit the camera pitch to the range in which the camera can be operated.
+	radians = clamp( getMinCameraPitch(), radians, getMaxCameraPitch() );
+
 	View::setPitch( radians );
 
 	stopDoingScriptedCamera();
@@ -2234,6 +2317,9 @@ void W3DView::setDefaultView(Real pitch, Real angle, Real maxHeight)
 	//	m_defaultAngle = angle * WWMATH_PI/180.0f;
 	setDefaultPitch(pitch);
 	m_maxHeightAboveGround = TheGlobalData->m_maxCameraHeight*maxHeight;
+	// Chipi @feature The scripted camera has its own maximum camera height. It is the retail
+	// value, so that the cutscenes are not affected by the camera settings of the player.
+	m_scriptedMaxHeightAboveGround = ViewDefaultMaxHeightAboveTerrain*maxHeight;
 	if (m_minHeightAboveGround > m_maxHeightAboveGround)
 		m_maxHeightAboveGround = m_minHeightAboveGround;
 }

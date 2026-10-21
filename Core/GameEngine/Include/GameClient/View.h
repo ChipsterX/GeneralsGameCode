@@ -192,6 +192,15 @@ public:
 	virtual Real getPitch() { return m_pitch; }										///< Return current camera pitch
 	virtual void setDefaultPitch( Real radians );												///< Set new default camera pitch. It affects the camera distance to the ground
 	virtual Real getDefaultPitch() { return m_defaultPitch; }						///< Return current default camera pitch
+	/// Chipi @feature The camera geometry is calculated relative to this camera pitch.
+	/// It is the camera pitch at which the camera height above the ground is equal to the
+	/// desired camera height above the ground. It is configured with the CameraPitch setting
+	/// in the GameData.ini.
+	static Real getReferenceCameraPitch();
+	/// Chipi @feature The camera geometry is calculated relative to this camera yaw.
+	/// It is the camera yaw at which the camera is in its default orientation.
+	/// It is configured with the CameraYaw setting in the GameData.ini.
+	static Real getReferenceCameraYaw();
 	virtual void setAngleToDefault();															///< Set the view angle back to default
 	virtual void setPitchToDefault();															///< Set the view pitch back to default
 	void setPosition( const Coord3D &pos ) { m_pos = pos; }

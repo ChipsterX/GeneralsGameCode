@@ -72,6 +72,7 @@ private:
 	ICoord2D m_originalAnchor;
 	ICoord2D m_currentPos;
 	Real m_anchorAngle;
+	Real m_anchorPitch;						// the camera pitch when the MMB drag started
 	Bool m_isScrolling;				// set to true if we are in the act of RMB scrolling
 	Bool m_isRotating;					// set to true if we are in the act of MMB rotating
 	Bool m_isPitching;					// set to true if we are in the act of pitch rotation

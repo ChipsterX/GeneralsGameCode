@@ -77,6 +77,13 @@ static Bool scrollDir[4] = { false, false, false, false };
 constexpr const Real SCROLL_MULTIPLIER = 2.0f;
 constexpr const Real SCROLL_AMT = 100.0f * SCROLL_MULTIPLIER;
 
+// Chipi @feature The camera rotation and tilt speed are relative to the screen size,
+// so that the camera feels the same on any screen resolution.
+// The camera rotates by this many radians when the mouse is dragged across the whole screen width.
+constexpr const Real CAMERA_ROTATE_DRAG_RADIANS = WWMATH_PI * 4.0f;	///< 2 full rotations
+// The camera tilts by this many radians when the mouse is dragged across the whole screen height.
+constexpr const Real CAMERA_PITCH_DRAG_RADIANS = WWMATH_PI;			///< 90 degrees
+
 static const Int edgeScrollSize = 3;
 
 static Mouse::MouseCursor prevCursor = Mouse::ARROW;
@@ -146,6 +153,8 @@ LookAtTranslator::LookAtTranslator() :
 	m_anchor.x = m_anchor.y = 0;
 	m_currentPos.x = m_currentPos.y = 0;
 	m_originalAnchor.x = m_originalAnchor.y = 0;
+	m_anchorAngle = 0.0f;
+	m_anchorPitch = 0.0f;
 
 	OptionPreferences prefs;
 	m_screenEdgeScrollMode = prefs.getScreenEdgeScrollMode();
@@ -292,6 +301,7 @@ GameMessageDisposition LookAtTranslator::translateGameMessage(const GameMessage 
 			m_isRotating = true;
 			m_anchor = msg->getArgument( 0 )->pixel;
 			m_anchorAngle = TheTacticalView->getAngle();
+			m_anchorPitch = TheTacticalView->getPitch();
 			m_originalAnchor = msg->getArgument( 0 )->pixel;
 			m_currentPos = msg->getArgument( 0 )->pixel;
 			break;
@@ -365,8 +375,10 @@ GameMessageDisposition LookAtTranslator::translateGameMessage(const GameMessage 
 			// rotate the view
 			if (m_isRotating)
 			{
-				const Real FACTOR = 0.01f;
-				const Real angle = FACTOR * (m_currentPos.x - m_originalAnchor.x);
+				// Chipi @feature The rotation and tilt speed is relative to the screen
+				// size, so that the camera feels the same on any screen resolution.
+				const Real rotateFactor = CAMERA_ROTATE_DRAG_RADIANS / (Real)width;
+				const Real angle = rotateFactor * (m_currentPos.x - m_originalAnchor.x);
 				Real targetAngle = m_anchorAngle + angle;
 
 				// TheSuperHackers @tweak Stubbjax 13/11/2025 Snap angle to nearest 45 degrees
@@ -378,6 +390,16 @@ GameMessageDisposition LookAtTranslator::translateGameMessage(const GameMessage 
 				}
 
 				TheTacticalView->userSetAngle(targetAngle);
+
+				// Chipi @feature Tilt the camera with the vertical mouse movement.
+				// The camera zoom is not changed, so the camera keeps its distance to the
+				// look-at target and only the tilt changes.
+				// Dragging the mouse down tilts the camera to look more from the top,
+				// just like dragging the world down with the horizontal mouse movement.
+				const Real pitchFactor = CAMERA_PITCH_DRAG_RADIANS / (Real)height;
+				const Real pitchAngle = pitchFactor * (m_currentPos.y - m_originalAnchor.y);
+				TheTacticalView->userSetPitch( m_anchorPitch + pitchAngle );
+
 				m_anchor = msg->getArgument( 0 )->pixel;
 			}
 

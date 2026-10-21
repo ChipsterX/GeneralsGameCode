@@ -4273,8 +4273,10 @@ void ScriptActions::doCameraSetDefault(Real pitch, Real angle, Real maxHeight)
 {
 #if PRESERVE_RETAIL_SCRIPTED_CAMERA
 	// TheSuperHackers @tweak To preserve the original scripted camera values, offset them by default ones.
-	pitch = -pitch + ViewDefaultPitchRadians;
-	angle = angle + ViewDefaultYawRadians;
+	// Chipi @feature The offsets are relative to the reference camera angles, so they stay
+	// consistent with the camera geometry when the CameraPitch or CameraYaw settings change.
+	pitch = -pitch + View::getReferenceCameraPitch();
+	angle = angle + View::getReferenceCameraYaw();
 #endif
 
 	TheTacticalView->setDefaultView(pitch, angle, maxHeight);
