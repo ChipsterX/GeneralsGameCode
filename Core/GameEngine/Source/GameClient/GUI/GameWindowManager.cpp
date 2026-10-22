@@ -37,6 +37,7 @@
 #include "GameClient/GameWindowManager.h"
 #include "GameClient/GameWindow.h"
 #include "GameClient/GameWindowDebugOverlay.h"
+#include "GameClient/GameWindowDebugPanel.h"
 #include "GameClient/Mouse.h"
 #include "GameClient/DisplayStringManager.h"
 #include "GameClient/WindowLayout.h"
@@ -197,6 +198,9 @@ GameWindowManager::~GameWindowManager()
 	// release the strings of the GUI debug overlay, they belong to the windows
 	GameWindowDebugOverlayShutdown();
 
+	// close the GUI debug options panel
+	GameWindowDebugPanelShutdown();
+
 	delete TheTransitionHandler;
 	TheTransitionHandler = nullptr;
 }
@@ -225,6 +229,9 @@ void GameWindowManager::reset()
 
 	// release the strings of the GUI debug overlay, they belong to the windows
 	GameWindowDebugOverlayShutdown();
+
+	// close the GUI debug options panel
+	GameWindowDebugPanelShutdown();
 
 }
 
@@ -1277,6 +1284,7 @@ void GameWindowManager::winRepaint()
 
 	// prepare the GUI debug overlay for this frame (debug builds only)
 	GameWindowDebugOverlayUpdate();
+	GameWindowDebugPanelUpdate();
 
 	// draw below windows
 	for( window = m_windowTail; window; window = next )

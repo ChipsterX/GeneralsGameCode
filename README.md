@@ -127,8 +127,7 @@ See `Core/GameEngine/Source/Common/PerfOverlay.cpp` for the implementation.
 #### GUI window names (debug builds)
 
 Debug builds (`cmake --preset win32-debug`) show the technical name of every GUI window in the top left
-corner of that window. Press **F12** to show/hide it. This only happens in the game, the GUI editor
-does not show the names.
+corner of that window. This only happens in the game, the GUI editor does not show the names.
 
 ```
 Menus/MainMenu.wnd:Button.SinglePlayer [PUSHBUTTON]
@@ -148,7 +147,21 @@ Windows that are created in code instead of being loaded from a layout file can 
 myWindow->winSetDebugName("MyWindow.cpp:MyCoolWindow");
 ```
 
-See `Core/GameEngine/Source/GameClient/GUI/GameWindowDebugOverlay.cpp` for the implementation.
+#### Debug options (debug builds)
+
+The debug options can be opened in the game with **Ctrl+Alt+D**. The panel is in the upper right corner
+and contains the check boxes for the different debug overlays:
+
+- the names of the GUI windows,
+- the frames of the GUI windows,
+- the profiling overlay.
+
+The panel is not modal, the game keeps running while it is open.
+
+**Ctrl+Alt+N** switches the names of the GUI windows on and off without opening the panel.
+
+See `Core/GameEngine/Source/GameClient/GUI/GameWindowDebugOverlay.cpp` and
+`Core/GameEngine/Source/GameClient/GUI/GameWindowDebugPanel.cpp` for the implementation.
 
 ## Contributing
 

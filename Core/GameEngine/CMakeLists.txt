@@ -187,6 +187,7 @@ set(GAMEENGINE_SRC
     Include/GameClient/GameText.h
     Include/GameClient/GameWindow.h
     Include/GameClient/GameWindowDebugOverlay.h
+    Include/GameClient/GameWindowDebugPanel.h
     Include/GameClient/GameWindowGlobal.h
     Include/GameClient/GameWindowID.h
     Include/GameClient/GameWindowManager.h
@@ -761,6 +762,7 @@ set(GAMEENGINE_SRC
     Source/GameClient/GUI/GameFont.cpp
     Source/GameClient/GUI/GameWindow.cpp
     Source/GameClient/GUI/GameWindowDebugOverlay.cpp
+    Source/GameClient/GUI/GameWindowDebugPanel.cpp
     Source/GameClient/GUI/GameWindowGlobal.cpp
     Source/GameClient/GUI/GameWindowManager.cpp
     Source/GameClient/GUI/GameWindowManagerScript.cpp

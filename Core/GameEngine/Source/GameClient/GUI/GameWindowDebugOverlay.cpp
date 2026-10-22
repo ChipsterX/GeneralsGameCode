@@ -45,10 +45,6 @@ namespace
 {
 
 //-------------------------------------------------------------------------------------------------
-// The key that toggles the overlay.
-const KeyDefType OVERLAY_TOGGLE_KEY = KEY_F12;
-
-//-------------------------------------------------------------------------------------------------
 // The look of the labels.
 enum
 {
@@ -60,7 +56,7 @@ enum
 //-------------------------------------------------------------------------------------------------
 // The state of the overlay.
 Bool s_visible = TRUE;
-Bool s_toggleKeyIsDown = FALSE;
+Bool s_showFrames = FALSE;
 GameFont *s_labelFont = nullptr;
 
 //-------------------------------------------------------------------------------------------------
@@ -92,42 +88,6 @@ Bool IsOverlayEnabled()
 		return FALSE;
 
 	return TheWindowManager->getShowDebugNames();
-
-}
-
-//-------------------------------------------------------------------------------------------------
-/** Toggle the overlay when the hotkey is pressed.
-	*
-	* The keyboard has already consumed the key events by the time we get here,
-	* so the key state is inspected directly and the toggle only happens once
-	* per press.
-	*/
-//-------------------------------------------------------------------------------------------------
-void CheckToggleHotkey()
-{
-
-	if( TheKeyboard == nullptr )
-		return;
-
-	for( KeyboardIO *io = TheKeyboard->getFirstKey(); io->key != KEY_NONE; ++io )
-	{
-
-		if( io->key != OVERLAY_TOGGLE_KEY )
-			continue;
-
-		if( BitIsSet( io->state, KEY_STATE_UP ) )
-		{
-			// The key was released, so the next press toggles the overlay again.
-			s_toggleKeyIsDown = FALSE;
-		}
-		else if( BitIsSet( io->state, KEY_STATE_DOWN ) && !s_toggleKeyIsDown )
-		{
-			// The key was pressed. Only toggle once, no matter how long it is held.
-			s_toggleKeyIsDown = TRUE;
-			GameWindowDebugOverlayToggle();
-		}
-
-	}
 
 }
 
@@ -300,8 +260,6 @@ void GameWindowDebugOverlayUpdate()
 		return;
 	}
 
-	CheckToggleHotkey();
-
 	// Release the label strings of the windows that were gone in the last frame.
 	ReleaseDeadLabelStrings();
 
@@ -325,13 +283,28 @@ void GameWindowDebugOverlayDrawWindow( GameWindow *window )
 	if( window == nullptr || TheDisplay == nullptr )
 		return;
 
-	GameFont *font = GetLabelFont();
-	if( font == nullptr )
-		return;
-
 	// Remember that this window is still alive, so that its label string is
 	// not released while we are drawing it.
 	s_liveWindows.insert( window );
+
+	Int x = 0;
+	Int y = 0;
+	window->winGetScreenPosition( &x, &y );
+
+	// Draw the frame of the window, so that the position and the size of the
+	// windows can be seen.
+	if( s_showFrames )
+	{
+		Int width = 0;
+		Int height = 0;
+		window->winGetSize( &width, &height );
+
+		TheDisplay->drawOpenRect( x, y, width, height, 1.0f, GameMakeColor( 0, 255, 255, 255 ) );
+	}
+
+	GameFont *font = GetLabelFont();
+	if( font == nullptr )
+		return;
 
 	BuildLabel( window );
 
@@ -351,9 +324,6 @@ void GameWindowDebugOverlayDrawWindow( GameWindow *window )
 	if( labelString->getText() != s_unicodeLabel )
 		labelString->setText( s_unicodeLabel );
 
-	Int x = 0;
-	Int y = 0;
-	window->winGetScreenPosition( &x, &y );
 	x += LABEL_OFFSET_X;
 	y += LABEL_OFFSET_Y;
 
@@ -380,6 +350,26 @@ void GameWindowDebugOverlayShutdown()
 	ReleaseLabelStrings();
 
 	s_liveWindows.clear();
+
+}
+
+//-------------------------------------------------------------------------------------------------
+/** Should the frames of the windows be drawn as well? */
+//-------------------------------------------------------------------------------------------------
+void GameWindowDebugOverlaySetShowFrames( Bool show )
+{
+
+	s_showFrames = show;
+
+}
+
+//-------------------------------------------------------------------------------------------------
+/** Should the frames of the windows be drawn as well? */
+//-------------------------------------------------------------------------------------------------
+Bool GameWindowDebugOverlayGetShowFrames()
+{
+
+	return s_showFrames;
 
 }
 

@@ -32,8 +32,8 @@
 // can be named with GameWindow::winSetDebugName().
 //
 // The label of a window is drawn as part of that window, so a window that is
-// drawn on top of it hides its label. The overlay can be toggled with the F12
-// key.
+// drawn on top of it hides its label. The overlay is toggled with Ctrl+Alt+N
+// and the debug options panel is opened with Ctrl+Alt+D.
 //
 //////////////////////////////////////////////////////////////////////////////
 
@@ -47,8 +47,8 @@ class GameWindow;
 #if defined(RTS_DEBUG)
 
 //-------------------------------------------------------------------------------------------------
-// Prepares the overlay for a new frame. This checks the hotkey that toggles the
-// overlay and releases the label strings of the windows that are gone.
+// Prepares the overlay for a new frame. This releases the label strings of the
+// windows that are gone.
 // This is called once per frame, before the windows are drawn.
 //-------------------------------------------------------------------------------------------------
 void GameWindowDebugOverlayUpdate();
@@ -59,6 +59,12 @@ void GameWindowDebugOverlayUpdate();
 // covered by the windows that are drawn on top of it.
 //-------------------------------------------------------------------------------------------------
 void GameWindowDebugOverlayDrawWindow( GameWindow *window );
+
+//-------------------------------------------------------------------------------------------------
+// Should the frames of the windows be drawn as well?
+//-------------------------------------------------------------------------------------------------
+void GameWindowDebugOverlaySetShowFrames( Bool show );
+Bool GameWindowDebugOverlayGetShowFrames();
 
 //-------------------------------------------------------------------------------------------------
 // Releases the label strings of all the windows. This has to be called before
@@ -78,6 +84,8 @@ void GameWindowDebugOverlayToggle();
 // Builds without the overlay: all calls are no-ops.
 inline void GameWindowDebugOverlayUpdate() {}
 inline void GameWindowDebugOverlayDrawWindow( GameWindow * ) {}
+inline void GameWindowDebugOverlaySetShowFrames( Bool ) {}
+inline Bool GameWindowDebugOverlayGetShowFrames() { return false; }
 inline void GameWindowDebugOverlayShutdown() {}
 inline Bool GameWindowDebugOverlayIsVisible() { return false; }
 inline void GameWindowDebugOverlaySetVisible(Bool) {}
