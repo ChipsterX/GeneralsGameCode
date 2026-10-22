@@ -50,6 +50,9 @@ public:
 
 	virtual void init() override;  ///< initialize system
 
+	/// The GUI editor knows where every window is, it does not want their names.
+	virtual Bool getShowDebugNames() const override { return FALSE; }
+
 	virtual Int winDestroy( GameWindow *window ) override;  ///< destroy this window
 	/// create a new window by setting up parameters and callbacks
 	virtual GameWindow *winCreate( GameWindow *parent, UnsignedInt status,

@@ -65,6 +65,15 @@
 
 // DEFINES ////////////////////////////////////////////////////////////////////
 
+// The RTTI based class name is only used when the compiler supports it.
+#if defined(__cpp_rtti) || defined(_CPPRTTI) || defined(__GXX_RTTI)
+	#define GAME_WINDOW_USE_RTTI 1
+	#include <typeinfo>
+	#if !defined(_MSC_VER)
+		#include <cxxabi.h>
+	#endif
+#endif
+
 // PRIVATE TYPES //////////////////////////////////////////////////////////////
 
 // PRIVATE DATA ///////////////////////////////////////////////////////////////
@@ -74,6 +83,61 @@
 // PRIVATE PROTOTYPES /////////////////////////////////////////////////////////
 
 // PRIVATE FUNCTIONS //////////////////////////////////////////////////////////
+
+//-------------------------------------------------------------------------------------------------
+/** Get a readable name for the C++ class of the given window.
+	*
+	* On MSVC the runtime already returns a readable name ("class Foo"), on
+	* GCC and Clang the name is mangled and has to be demangled. The result is
+	* cached, because demangling is not free and this is called for every
+	* window of every frame.
+	*/
+//-------------------------------------------------------------------------------------------------
+static const char *GetClassTypeName( const GameWindow *window )
+{
+#ifdef GAME_WINDOW_USE_RTTI
+
+	const std::type_info &type = typeid( *window );
+
+#if defined(_MSC_VER)
+
+	const char *name = type.name();
+
+	// Strip the "class " or "struct " prefix the MSVC runtime adds.
+	const char *space = strchr( name, ' ' );
+	return ( space != nullptr ) ? space + 1 : name;
+
+#else
+
+	static std::map<const std::type_info *, AsciiString> typeNameCache;
+
+	std::map<const std::type_info *, AsciiString>::const_iterator it = typeNameCache.find( &type );
+	if( it != typeNameCache.end() )
+		return it->second.str();
+
+	AsciiString name( type.name() );
+
+	int status = 0;
+	char *demangled = abi::__cxa_demangle( type.name(), nullptr, nullptr, &status );
+	if( status == 0 && demangled != nullptr )
+	{
+		name = demangled;
+		free( demangled );
+	}
+
+	typeNameCache[ &type ] = name;
+	return typeNameCache[ &type ].str();
+
+#endif
+
+#else
+
+	(void)window;
+	return "GameWindow";
+
+#endif
+
+}
 
 // PUBLIC FUNCTIONS ///////////////////////////////////////////////////////////
 
@@ -1095,6 +1159,43 @@ void GameWindow::winSetUserData( void *data )
 {
 
 	m_userData = data;
+
+}
+
+// GameWindow::winSetDebugName ================================================
+/** Assign a technical name to this window. The name is shown by the GUI debug
+	* overlay in the corner of the window. */
+//=============================================================================
+void GameWindow::winSetDebugName( const char *name )
+{
+
+	m_debugName = ( name != nullptr ) ? name : "";
+
+}
+
+// GameWindow::winGetDebugName ================================================
+/** Get the technical name of this window.
+	*
+	* Windows that were loaded from a window layout file (.wnd) know the name
+	* they were saved with. That name is decorated with the file it was saved
+	* in, so it also tells you where the window comes from. Windows that are
+	* created in code can be named with winSetDebugName(). Everything else is
+	* identified by its C++ class.
+	*/
+//=============================================================================
+const char *GameWindow::winGetDebugName() const
+{
+
+	// A name that was explicitly assigned always wins.
+	if( m_debugName.isNotEmpty() )
+		return m_debugName.str();
+
+	// Windows that come from a window layout file carry their own name.
+	if( m_instData.m_decoratedNameString.isNotEmpty() )
+		return m_instData.m_decoratedNameString.str();
+
+	// Everything else is identified by its class.
+	return GetClassTypeName( this );
 
 }
 

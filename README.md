@@ -124,6 +124,32 @@ The counters are compiled out completely in release builds, so they cost nothing
 The names are registered on first use, so the same name always refers to the same counter.
 See `Core/GameEngine/Source/Common/PerfOverlay.cpp` for the implementation.
 
+#### GUI window names (debug builds)
+
+Debug builds (`cmake --preset win32-debug`) show the technical name of every GUI window in the top left
+corner of that window. Press **F12** to show/hide it. This only happens in the game, the GUI editor
+does not show the names.
+
+```
+Menus/MainMenu.wnd:Button.SinglePlayer [PUSHBUTTON]
+Menus/MainMenu.wnd:Button.MultiPlayer [PUSHBUTTON]
+```
+
+The name is the one the window was saved with in its window layout file (`.wnd`), so it also tells you
+which file the window comes from. The part in brackets is the kind of the control.
+
+The name is drawn as part of the window it belongs to, so a window that is drawn on top of it (for
+example a popup menu) hides its name.
+
+Windows that are created in code instead of being loaded from a layout file can be named with
+`GameWindow::winSetDebugName()`:
+
+```cpp
+myWindow->winSetDebugName("MyWindow.cpp:MyCoolWindow");
+```
+
+See `Core/GameEngine/Source/GameClient/GUI/GameWindowDebugOverlay.cpp` for the implementation.
+
 ## Contributing
 
 We welcome contributions to the project! If you’re interested in contributing, you need to have knowledge of C++. Join

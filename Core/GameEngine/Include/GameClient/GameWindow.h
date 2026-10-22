@@ -378,6 +378,17 @@ public:
 	void winSetEditData( GameWindowEditData *editData );
 	GameWindowEditData *winGetEditData();
 
+	// debugging ----------------------------------------------------------------
+	/** Assign a technical name to this window. The name is shown by the GUI
+		* debug overlay in the corner of the window. Windows that were loaded
+		* from a window layout file (.wnd) already know their own name, so this
+		* is only needed for windows that are created in code. */
+	void winSetDebugName( const char *name );
+	/** Get the technical name of this window. This is the name the window was
+		* saved with in its window layout file, which also contains the name of
+		* the file it came from. Never returns null. */
+	const char *winGetDebugName() const;
+
 protected:
 
 	/// 'images' should be taken care of when we hide ourselves or are destroyed
@@ -427,6 +438,9 @@ protected:
 
 	// game window edit data for the GUIEditor only
 	GameWindowEditData *m_editData;
+
+	// technical name of this window, shown by the GUI debug overlay
+	AsciiString m_debugName;
 
 	// vector of window transitions that have a relation to the current GameWindow
 	std::vector<TransitionWindow*> m_transitionWindows;

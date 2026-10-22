@@ -229,6 +229,10 @@ public:
 
 	virtual void winRepaint();  ///< draw GUI in reverse order
 
+	/// Should the debug overlay draw the technical names of the windows? The GUI
+	/// editor knows where everything is, so it turns this off.
+	virtual Bool getShowDebugNames() const { return TRUE; }
+
 	virtual void winNextTab( GameWindow *window );	///< give keyboard focus to the next window in the tab list
 
 	virtual void winPrevTab( GameWindow *window );	///< give keyboard focus to the previous window in the tab list

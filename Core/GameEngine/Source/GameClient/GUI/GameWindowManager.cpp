@@ -36,6 +36,7 @@
 #include "GameClient/Display.h"
 #include "GameClient/GameWindowManager.h"
 #include "GameClient/GameWindow.h"
+#include "GameClient/GameWindowDebugOverlay.h"
 #include "GameClient/Mouse.h"
 #include "GameClient/DisplayStringManager.h"
 #include "GameClient/WindowLayout.h"
@@ -193,6 +194,9 @@ GameWindowManager::~GameWindowManager()
 	winDestroyAll();
 	freeStaticStrings();
 
+	// release the strings of the GUI debug overlay, they belong to the windows
+	GameWindowDebugOverlayShutdown();
+
 	delete TheTransitionHandler;
 	TheTransitionHandler = nullptr;
 }
@@ -218,6 +222,9 @@ void GameWindowManager::reset()
 	winDestroyAll();
 	if(TheTransitionHandler)
 		TheTransitionHandler->reset();
+
+	// release the strings of the GUI debug overlay, they belong to the windows
+	GameWindowDebugOverlayShutdown();
 
 }
 
@@ -280,6 +287,13 @@ void GameWindowManager::linkWindow( GameWindow *window )
 		if (window->m_next)
 		{
 			window->m_next->m_prev = window;
+		}
+		else
+		{
+			// The window was added behind the tail of the list, so it is the
+			// new tail now. Without this the tail would still point to the
+			// modal window and the windows behind it would never be drawn.
+			m_windowTail = window;
 		}
 	}
 
@@ -1220,6 +1234,10 @@ Int GameWindowManager::drawWindow( GameWindow *window )
 		if( !BitIsSet( window->m_status, WIN_STATUS_SEE_THRU ) && window->m_draw )
 			window->m_draw( window, &window->m_instData );
 
+		// draw the technical name of the window inside of it, so that the
+		// windows that are drawn on top of it hide its name (debug builds only)
+		GameWindowDebugOverlayDrawWindow( window );
+
 		/// @todo visit list boxes and borders, this is stupid!
 		// for list boxes only draw the borders BEFORE the children
 		if( BitIsSet( window->winGetStyle(), GWS_SCROLL_LISTBOX ) )
@@ -1256,6 +1274,9 @@ Int GameWindowManager::drawWindow( GameWindow *window )
 void GameWindowManager::winRepaint()
 {
 	GameWindow *window, *next;
+
+	// prepare the GUI debug overlay for this frame (debug builds only)
+	GameWindowDebugOverlayUpdate();
 
 	// draw below windows
 	for( window = m_windowTail; window; window = next )

@@ -224,10 +224,31 @@ WinDrawData hiliteSliderThumbDrawData[ MAX_DRAW_DATA ];  ///< for sliders and li
 
 // PRIVATE PROTOTYPES /////////////////////////////////////////////////////////
 static GameWindow *parseWindow( File *inFile, char *buffer );
+static void assignLayoutDebugNames( GameWindow *window, const char *layoutFileName );
 
 ///////////////////////////////////////////////////////////////////////////////
 // PRIVATE FUNCTIONS //////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
+
+// assignLayoutDebugNames =======================================================
+/** Give the given window and all of its children the name of the layout file
+	* they were loaded from, but only if they do not have a name of their own.
+	* Windows that were saved by the GUIEdit have such a name, it contains the
+	* name of the file as well. This is only used by the GUI debug overlay. */
+//=============================================================================
+static void assignLayoutDebugNames( GameWindow *window, const char *layoutFileName )
+{
+
+	if( window == nullptr )
+		return;
+
+	if( window->winGetInstanceData()->m_decoratedNameString.isEmpty() )
+		window->winSetDebugName( layoutFileName );
+
+	for( GameWindow *child = window->winGetChild(); child; child = child->winGetNext() )
+		assignLayoutDebugNames( child, layoutFileName );
+
+}
 
 // parseBitFlag ===============================================================
 /** Parse one of the "flags" referred to below in the header comment
@@ -2910,6 +2931,11 @@ GameWindow *GameWindowManager::winCreateFromScript( AsciiString filenameString,
 	// close the file
 	inFile->close();
 	inFile = nullptr;
+
+	// let the windows know which layout file they came from, so the GUI debug
+	// overlay can show it for the windows that have no name of their own
+	for( GameWindowList::const_iterator it = scriptInfo.windows.begin(); it != scriptInfo.windows.end(); ++it )
+		assignLayoutDebugNames( *it, filenameString.str() );
 
 	// if info parameter is provided, copy info to the param
 	if( info )

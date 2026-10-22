@@ -68,6 +68,16 @@ W3DDisplayStringManager::~W3DDisplayStringManager()
 	m_formationLetterDisplayString = nullptr;
 
 
+	// Free the strings that are still in the list. Everything that owns a
+	// string is supposed to release it before we are destroyed, but the debug
+	// helpers keep a string around for the lifetime of the process and would
+	// otherwise leave the list with leftovers (and leak the pool blocks).
+	while (m_stringList)
+	{
+		DisplayString* string = m_stringList;
+		unLink(string);
+		deleteInstance(string);
+	}
 }
 
 //-------------------------------------------------------------------------------------------------
