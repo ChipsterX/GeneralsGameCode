@@ -44,6 +44,7 @@
 #include "Common/MultiplayerSettings.h"
 #include "Common/OSDisplay.h"
 #include "Common/PerfTimer.h"
+#include "Common/PerfOverlay.h"
 #include "Common/Player.h"
 #include "Common/PlayerList.h"
 #include "Common/PlayerTemplate.h"
@@ -3183,6 +3184,7 @@ extern __int64 Total_Load_3D_Assets;
 void GameLogic::update()
 {
 	USE_PERF_TIMER(GameLogic_update)
+	PERF_SCOPE("Logic");
 	PROFILER_SECTION_COLOR(0x4CAF50);
 
 	LatchRestore<Bool> inUpdateLatch(m_isInUpdate, TRUE);

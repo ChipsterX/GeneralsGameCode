@@ -57,6 +57,7 @@
 #include "Common/MessageStream.h"
 #include "Common/NameKeyGenerator.h"
 #include "Common/PerfTimer.h"
+#include "Common/PerfOverlay.h"
 #include "Common/Player.h"
 #include "Common/PlayerList.h"
 #include "Common/Radar.h"
@@ -2761,6 +2762,7 @@ void PartitionManager::shutdown()
 void PartitionManager::update()
 {
 	//USE_PERF_TIMER(PartitionManager_update)
+	PERF_SCOPE("PartitionManager");
 	{
 #ifdef INTENSE_DEBUG
 		Int cc = 0;

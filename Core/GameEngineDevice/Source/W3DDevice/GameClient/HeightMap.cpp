@@ -60,6 +60,7 @@
 #include <d3dx8core.h>
 #include "Common/GlobalData.h"
 #include "Common/PerfTimer.h"
+#include "Common/PerfOverlay.h"
 
 #include "GameClient/TerrainVisual.h"
 #include "GameClient/View.h"
@@ -1878,6 +1879,7 @@ void HeightMapRenderObjClass::updateCenter(CameraClass *camera, const Vector3 *c
 void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 {
 	//USE_PERF_TIMER(Terrain_Render)
+	PERF_SCOPE("Render.Terrain");
 
 	Int i,j,devicePasses;
 	W3DShaderManager::ShaderTypes st;

@@ -42,6 +42,7 @@
 #include "Common/MiscAudio.h"
 #include "Common/MultiplayerSettings.h"
 #include "Common/PerfTimer.h"
+#include "Common/PerfOverlay.h"
 #include "Common/Player.h"
 #include "Common/PlayerList.h"
 #include "Common/PlayerTemplate.h"
@@ -5015,18 +5016,14 @@ GameMessageDisposition CommandTranslator::translateGameMessage(const GameMessage
 
 		//------------------------------------------------------------------------------- DEMO MESSAGES
 		//-----------------------------------------------------------------------------------------
-#ifdef PERF_TIMERS
+#if defined(RTS_DEBUG)
 		case GameMessage::MSG_META_DEMO_TOGGLE_METRICS:
 		{
-			TheWritableGlobalData->m_showMetrics = !TheGlobalData->m_showMetrics;
-			if (TheGlobalData->m_showMetrics) {
-				TheDisplay->setDebugDisplayCallback(StatMetricsDisplay);
-			} else {
-				TheDisplay->setDebugDisplayCallback(nullptr);
-			}
+			// Toggles the on screen profiling counters.
+			PerfOverlayToggle();
 			break;
 		}
-#endif // #ifdef PERF_TIMERS
+#endif // #if defined(RTS_DEBUG)
 
 		//------------------------------------------------------------------------------- DEMO MESSAGES
 		//-----------------------------------------------------------------------------------------

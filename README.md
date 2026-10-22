@@ -93,6 +93,37 @@ Tracy profiling is supported in the CMake preset `win32-profile`.
 Use `tracy-profiler.exe` from [Tracy v0.13.1](https://github.com/wolfpld/tracy/releases/tag/v0.13.1).
 If you get an error when using Tracy, try removing `dbghelp.dll` from the game binary directory.
 
+#### On screen profiling counters (debug builds)
+
+Debug builds (`cmake --preset win32-debug`) show a small profiling overlay on the screen. It lists the time
+(in milliseconds) that the last frame spent in the most interesting parts of the engine, the share of the frame
+that this represents and the number of times the code was entered. Press **F11** to show/hide it.
+
+```
+Perf 16.67 ms/frame (F11 hides)
+Logic                   11.200 ms  67.2%      1 calls  peak   28.400 ms
+AI.Update                3.450 ms  20.7%    142 calls  peak    5.220 ms
+Render                   4.100 ms  24.6%      1 calls  peak   12.600 ms
+```
+
+To measure your own code, include `Common/PerfOverlay.h` and use the `PERF_SCOPE` macro. It times the
+enclosing scope and adds the result to the named counter:
+
+```cpp
+#include "Common/PerfOverlay.h"
+
+void MyExpensiveThing::update()
+{
+    PERF_SCOPE("MyExpensiveThing");
+    // ...
+}
+```
+
+Use `PERF_COUNT("MyExpensiveThing")` instead if you only want to count the calls.
+The counters are compiled out completely in release builds, so they cost nothing there.
+The names are registered on first use, so the same name always refers to the same counter.
+See `Core/GameEngine/Source/Common/PerfOverlay.cpp` for the implementation.
+
 ## Contributing
 
 We welcome contributions to the project! If you’re interested in contributing, you need to have knowledge of C++. Join

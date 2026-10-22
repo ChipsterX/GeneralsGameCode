@@ -49,6 +49,7 @@
 #include "Common/LocalFileSystem.h"
 #include "Common/GlobalData.h"
 #include "Common/PerfTimer.h"
+#include "Common/PerfOverlay.h"
 #include "Common/RandomValue.h"
 #include "Common/NameKeyGenerator.h"
 #include "Common/ModuleFactory.h"
@@ -879,6 +880,7 @@ void GameEngine::update()
 {
 	USE_PERF_TIMER(GameEngine_update)
 	{
+		PERF_SCOPE("Frame");
 		{
 			// VERIFY CRC needs to be in this code block.  Please to not pull TheGameLogic->update() inside this block.
 			VERIFY_CRC
@@ -887,12 +889,14 @@ void GameEngine::update()
 
 			/// @todo Move audio init, update, etc, into GameClient update
 
+			PERF_SCOPE("Audio");
 			TheAudio->UPDATE();
 			TheGameClient->UPDATE();
 			TheMessageStream->propagateMessages();
 
 			if (TheNetwork != nullptr)
 			{
+				PERF_SCOPE("Network");
 				TheNetwork->UPDATE();
 			}
 		}
@@ -908,6 +912,9 @@ void GameEngine::update()
 			}
 		}
 	}
+
+	// Publish the profiling counters of the frame that just finished.
+	PerfOverlayEndFrame();
 }
 
 // Horrible reference, but we really, really need to know if we are windowed.

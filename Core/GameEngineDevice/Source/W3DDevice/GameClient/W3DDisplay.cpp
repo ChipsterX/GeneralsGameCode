@@ -45,6 +45,7 @@ static void drawFramerateBar();
 #include "Common/ThingFactory.h"
 #include "Common/GlobalData.h"
 #include "Common/PerfTimer.h"
+#include "Common/PerfOverlay.h"
 #include "Common/FileSystem.h"
 #include "Common/LocalFileSystem.h"
 #include "Common/Player.h"
@@ -1863,6 +1864,8 @@ void W3DDisplay::step()
 void W3DDisplay::draw()
 {
 	//USE_PERF_TIMER(W3DDisplay_draw)
+	PERF_SCOPE("Render");
+	PROFILER_SECTION_NAME("Render");
 
 	extern HWND ApplicationHWnd;
 	if (ApplicationHWnd && ::IsIconic(ApplicationHWnd)) {
@@ -2103,6 +2106,11 @@ AGAIN:
 					// draw the current debug display
 					drawCurrentDebugDisplay();
 				}
+
+#if defined(RTS_DEBUG)
+				// Draw the on screen profiling counters (F11 toggles them).
+				PerfOverlayDraw();
+#endif
 
 #if defined(RTS_DEBUG)
 				if (TheGlobalData->m_benchmarkTimer > 0)

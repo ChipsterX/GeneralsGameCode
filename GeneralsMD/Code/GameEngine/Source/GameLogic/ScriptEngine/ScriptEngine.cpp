@@ -37,6 +37,7 @@
 #include "Common/LatchRestore.h"
 #include "Common/MessageStream.h"
 #include "Common/PerfTimer.h"
+#include "Common/PerfOverlay.h"
 #include "Common/Player.h"
 #include "Common/PlayerList.h"
 #include "Common/Team.h"
@@ -5501,6 +5502,8 @@ DECLARE_PERF_TIMER(ScriptEngine)
 void ScriptEngine::update()
 {
 	USE_PERF_TIMER(ScriptEngine)
+	PERF_SCOPE("Script");
+	PROFILER_SECTION_NAME("Script");
 #ifdef SPECIAL_SCRIPT_PROFILING
 #ifdef DEBUG_LOGGING
 	__int64 startTime64;

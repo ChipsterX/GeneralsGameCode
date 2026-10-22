@@ -90,6 +90,7 @@ set(GAMEENGINE_SRC
 #    Include/Common/Override.h
 #    Include/Common/PartitionSolver.h
 #    Include/Common/PerfMetrics.h
+    Include/Common/PerfOverlay.h
     Include/Common/PerfTimer.h
 #    Include/Common/Player.h
 #    Include/Common/PlayerList.h
@@ -631,6 +632,7 @@ set(GAMEENGINE_SRC
 #    Source/Common/NameKeyGenerator.cpp
     Source/Common/OptionPreferences.cpp
 #    Source/Common/PartitionSolver.cpp
+    Source/Common/PerfOverlay.cpp
     Source/Common/PerfTimer.cpp
     Source/Common/RandomValue.cpp
 #    Source/Common/Recorder.cpp

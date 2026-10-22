@@ -31,6 +31,7 @@
 #include "GameLogic/Pathfinder/PathfindConstants.h"
 
 #include "Common/PerfTimer.h"
+#include "Common/PerfOverlay.h"
 #include "Common/Player.h"
 #include "Common/CRCDebug.h"
 #include "Common/GlobalData.h"
@@ -2156,6 +2157,8 @@ Path *Pathfinder::getAircraftPath( const Object *obj, const Coord3D *to )
 void Pathfinder::processPathfindQueue()
 {
 	//USE_PERF_TIMER(processPathfindQueue)
+	PERF_SCOPE("Pathfinder");
+	PROFILER_SECTION_NAME("Pathfinder");
 	if (!m_isMapReady) {
 		return;
 	}
@@ -2648,6 +2651,8 @@ Path *Pathfinder::internalFindPath( Object *obj, const LocomotorSet& locomotorSe
 													 const Coord3D *rawTo)
 {
 	//CRCDEBUG_LOG(("Pathfinder::findPath()"));
+	PERF_SCOPE("Pathfinder.FindPath");
+	PROFILER_SECTION_NAME("Pathfinder.FindPath");
 #ifdef INTENSE_DEBUG
 	DEBUG_LOG(("internal find path..."));
 #endif

@@ -44,6 +44,7 @@
 #include "Common/ThingTemplate.h"
 #include "Common/Upgrade.h"
 #include "Common/PerfTimer.h"
+#include "Common/PerfOverlay.h"
 #include "Common/UnitTimings.h"
 #include "Common/Xfer.h"
 #include "Common/XferCRC.h"
@@ -1002,6 +1003,8 @@ UpdateSleepTime AIUpdateInterface::update()
 	//DEBUG_LOG(("AIUpdateInterface frame %d: %08lx",TheGameLogic->getFrame(),getObject()));
 
 	USE_PERF_TIMER(AIUpdateInterface_update)
+	PERF_SCOPE("AI.Update");
+	PROFILER_SECTION_NAME("AI.Update");
 
 	m_isInUpdate = TRUE;
 

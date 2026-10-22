@@ -32,6 +32,7 @@
 #define NO_DEBUG_CRC
 
 #include "Common/PerfTimer.h"
+#include "Common/PerfOverlay.h"
 #include "Common/Player.h"
 #include "Common/ThingTemplate.h"
 #include "Common/Xfer.h"
@@ -618,6 +619,7 @@ DECLARE_PERF_TIMER(PhysicsBehavior)
 UpdateSleepTime PhysicsBehavior::update()
 {
 	USE_PERF_TIMER(PhysicsBehavior)
+	PERF_SCOPE("Physics");
 
 	Object*														obj = getObject();
 	const PhysicsBehaviorModuleData*	d = getPhysicsBehaviorModuleData();

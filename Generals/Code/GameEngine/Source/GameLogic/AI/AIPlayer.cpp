@@ -33,6 +33,7 @@
 #include "Common/GameState.h"
 #include "Common/GlobalData.h"
 #include "Common/PerfTimer.h"
+#include "Common/PerfOverlay.h"
 #include "Common/Player.h"
 #include "Common/Team.h"
 #include "Common/ThingFactory.h"
@@ -2722,6 +2723,8 @@ void AIPlayer::doUpgradesAndSkills()
 void AIPlayer::update()
 {
 	//USE_PERF_TIMER(AIPlayer_update)
+	PERF_SCOPE("AI.Player");
+	PROFILER_SECTION_NAME("AI.Player");
 
 	doBaseBuilding();		// See if it's time to build another building.
 

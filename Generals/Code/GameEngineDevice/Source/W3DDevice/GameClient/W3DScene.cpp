@@ -38,6 +38,7 @@
 #include "Common/GameUtility.h"
 #include "Common/GlobalData.h"
 #include "Common/PerfTimer.h"
+#include "Common/PerfOverlay.h"
 #include "Common/Player.h"
 #include "Common/PlayerList.h"
 #include "GameLogic/Object.h"
@@ -924,6 +925,7 @@ void RTS3DScene::updatePlayerColorPasses()
 void RTS3DScene::Render(RenderInfoClass & rinfo)
 {
 	//USE_PERF_TIMER(NonTerrainRender)
+	PERF_SCOPE("Render.Objects");
 	DX8Wrapper::Set_Fog(FogEnabled, FogColor, FogStart, FogEnd);
 
 	//Override the behind building selection if it's not available on current hardware (needs stencil).
