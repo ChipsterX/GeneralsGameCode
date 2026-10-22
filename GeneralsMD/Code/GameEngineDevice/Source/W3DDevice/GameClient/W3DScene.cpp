@@ -76,6 +76,16 @@ extern void DoTrees(RenderInfoClass & rinfo);
 extern void DoShadows(RenderInfoClass & rinfo, Bool stencilPass);
 extern void DoParticles(RenderInfoClass & rinfo);
 
+//-------------------------------------------------------------------------------------------------
+// The index of the performance counter that times the objects of the scene. It is also used to
+// report the number of objects that are drawn.
+//-------------------------------------------------------------------------------------------------
+static Int GetObjectPerfCounterIndex()
+{
+	static const Int index = PerfOverlayRegister("Render.Objects");
+	return index;
+}
+
 // No texturing, no zbuffer reading/writing, primary gradient, no
 // blending, no fogging - mostly for use in solid-colored opaque objects.
 #define SC_PLAYER_COLOR ( SHADE_CNST(ShaderClass::PASS_ALWAYS, ShaderClass::DEPTH_WRITE_DISABLE, ShaderClass::COLOR_WRITE_ENABLE, \
@@ -973,7 +983,8 @@ void RTS3DScene::updatePlayerColorPasses()
 void RTS3DScene::Render(RenderInfoClass & rinfo)
 {
 	//USE_PERF_TIMER(NonTerrainRender)
-	PERF_SCOPE("Render.Objects");
+	static const Int objectPerfIndex = GetObjectPerfCounterIndex();
+	PerfOverlayScope objectPerfScope(objectPerfIndex);
 	DX8Wrapper::Set_Fog(FogEnabled, FogColor, FogStart, FogEnd);
 
 	//Override the behind building selection if it's not available on current hardware (needs stencil).
@@ -1172,6 +1183,7 @@ void RTS3DScene::Customized_Render( RenderInfoClass &rinfo )
 #endif
 
 	// loop through all render objects in the list:
+	Int drawnObjects = 0;
 	for (it.First(&RenderList); !it.Is_Done();)
 	{
 		// get the render object
@@ -1182,6 +1194,7 @@ void RTS3DScene::Customized_Render( RenderInfoClass &rinfo )
 			continue;	//we already rendered terrain
 
 		if (robj->Is_Really_Visible()) {
+			++drawnObjects;
 			DrawableInfo *drawInfo = (DrawableInfo *)robj->Get_User_Data();
 			Drawable *draw=nullptr;
 			if (drawInfo)
@@ -1208,6 +1221,14 @@ void RTS3DScene::Customized_Render( RenderInfoClass &rinfo )
 		Get_Extra_Pass_Polygon_Mode() == EXTRA_PASS_DISABLE)
 	{
 		TheParticleSystemManager->queueParticleRender();
+	}
+
+	// TheSuperHackers @feature Report the number of objects that are in the view to the
+	// performance overlay. Only the regular pass is counted, the extra passes would add the
+	// same objects again.
+	if (m_customPassMode == SCENE_PASS_DEFAULT && Get_Extra_Pass_Polygon_Mode() == EXTRA_PASS_DISABLE)
+	{
+		PerfOverlaySetValue(GetObjectPerfCounterIndex(), drawnObjects);
 	}
 }
 

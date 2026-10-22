@@ -237,6 +237,7 @@ private:
 	Int			m_numTrees;						///< Number of trees in m_trees.
 	Bool		m_anythingChanged;	///< Set to true if visibility or sorting changed.
 	Bool		m_anyPushChanged;		///< Set to true if push aside is active.
+	Int			m_numVisibleTrees;		///< Number of trees that are visible, for the performance overlay.
 	Bool		m_updateAllKeys;  ///< Set to true when the view changes.
 	Bool		m_initialized;		///< True if the subsystem initialized.
 	Bool		m_isTerrainPass;  ///< True if the terrain was drawn in this W3D scene render pass.
@@ -275,6 +276,9 @@ protected:
 	void sort( Int iterations );								 ///< Performs partial bubble sort.
 #endif
 	void updateTexture();
+
+	/// TheSuperHackers @feature The index of the performance counter for the tree rendering.
+	static Int GetTreePerfCounterIndex();
 
 	Int  getPartitionBucket(const Coord3D &pos) const;
 

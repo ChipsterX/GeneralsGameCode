@@ -52,6 +52,7 @@
 #include "Common/GameUtility.h"
 #include "Common/Geometry.h"
 #include "Common/PerfTimer.h"
+#include "Common/PerfOverlay.h"
 #include "Common/Player.h"
 #include "Common/PlayerList.h"
 #include "WW3D2/camera.h"
@@ -81,11 +82,27 @@ it's sortKey */
 void W3DPropBuffer::cull(CameraClass * camera)
 {
 	Int curProp;
+	Int numVisible = 0;
 
 	for (curProp=0; curProp<m_numProps; curProp++) {
 		Bool visible = !camera->Cull_Sphere(m_props[curProp].bounds);
+		if (visible) {
+			numVisible++;
+		}
 		m_props[curProp].visible=visible;
 	}
+
+	// TheSuperHackers @feature Report the number of visible props to the performance overlay.
+	m_numVisibleProps = numVisible;
+}
+
+//-------------------------------------------------------------------------------------------------
+// The index of the performance counter for the prop rendering.
+//-------------------------------------------------------------------------------------------------
+Int W3DPropBuffer::GetPropPerfCounterIndex()
+{
+	static const Int index = PerfOverlayRegister("Render.Props", PERF_DETAIL_PROPS);
+	return index;
 }
 
 
@@ -116,6 +133,7 @@ W3DPropBuffer::W3DPropBuffer()
 {
 	m_initialized = false;
 	m_numProps = 0;
+	m_numVisibleProps = 0;
 	m_numPropTypes = 0;
 	m_light = NEW_REF( LightClass, (LightClass::DIRECTIONAL) );
 	m_propShroudMaterialPass = NEW_REF(W3DShroudMaterialPassClass,());
@@ -323,6 +341,11 @@ void W3DPropBuffer::drawProps(RenderInfoClass &rinfo)
 {
 	USE_PERF_TIMER(Prop_Render)
 
+	// TheSuperHackers @feature Report the prop rendering time and the number of visible props
+	// to the performance overlay.
+	static const Int propPerfIndex = GetPropPerfCounterIndex();
+	PerfOverlayScope propPerfScope(propPerfIndex);
+
 	Int i;
 	if (m_doCull) {
 		cull(&rinfo.Camera);
@@ -352,6 +375,7 @@ void W3DPropBuffer::drawProps(RenderInfoClass &rinfo)
 	}
 
 	rinfo.light_environment = &lightEnv;
+	Int drawnProps = 0;
 	for	(i=0; i<m_numProps; i++) {
 		if (!m_props[i].visible) {
 			continue;
@@ -373,6 +397,7 @@ void W3DPropBuffer::drawProps(RenderInfoClass &rinfo)
 		if (m_props[i].ss <= OBJECTSHROUD_INVALID) {
 			continue;
 		}
+		++drawnProps;
 		if (TheTerrainRenderObject->getShroud() && m_props[i].ss != CELLSHROUD_CLEAR) {
 			rinfo.Push_Material_Pass(m_propShroudMaterialPass);
 			m_props[i].m_robj->Render(rinfo);
@@ -382,6 +407,9 @@ void W3DPropBuffer::drawProps(RenderInfoClass &rinfo)
 		}
 	}
 	rinfo.light_environment = nullptr;
+
+	// TheSuperHackers @feature Report the number of props that were drawn and all props.
+	PerfOverlaySetValue(propPerfIndex, drawnProps, m_numProps);
 
 }
 

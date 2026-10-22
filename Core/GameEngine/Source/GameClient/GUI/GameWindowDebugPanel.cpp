@@ -66,6 +66,8 @@ enum DebugOption
 	DEBUG_OPTION_NAMES = 0,			///< show the names of the GUI windows
 	DEBUG_OPTION_FRAMES,			///< show the frames of the GUI windows
 	DEBUG_OPTION_PERF,				///< show the profiling overlay
+	DEBUG_OPTION_TREES,				///< show the tree counters of the overlay
+	DEBUG_OPTION_PROPS,				///< show the prop counters of the overlay
 	DEBUG_OPTION_COUNT
 };
 
@@ -74,6 +76,8 @@ const char *const s_optionLabels[DEBUG_OPTION_COUNT] =
 	"Show the names of the GUI windows",
 	"Show the frames of the GUI windows",
 	"Show the profiling overlay",
+	"Show the tree counters",
+	"Show the prop counters",
 };
 
 const char *const s_optionTitle = "Debug options";
@@ -85,7 +89,7 @@ enum
 {
 	PANEL_MARGIN = 16,					///< distance to the screen border
 	PANEL_WIDTH = 320,					///< width of the panel
-	PANEL_HEIGHT = 130,					///< height of the panel
+	PANEL_HEIGHT = 152,					///< height of the panel
 	TITLE_HEIGHT = 22,					///< height of the title line
 	BOX_SIZE = 14,						///< size of the check boxes
 	BOX_X = 12,							///< horizontal position of the check boxes
@@ -113,6 +117,8 @@ Bool GetOptionValue( DebugOption option )
 		case DEBUG_OPTION_NAMES: return GameWindowDebugOverlayIsVisible();
 		case DEBUG_OPTION_FRAMES: return GameWindowDebugOverlayGetShowFrames();
 		case DEBUG_OPTION_PERF:   return PerfOverlayIsVisible();
+		case DEBUG_OPTION_TREES:  return PerfOverlayIsDetailGroupVisible( PERF_DETAIL_TREES );
+		case DEBUG_OPTION_PROPS:  return PerfOverlayIsDetailGroupVisible( PERF_DETAIL_PROPS );
 		default: break;
 	}
 
@@ -131,6 +137,8 @@ void SetOptionValue( DebugOption option, Bool value )
 		case DEBUG_OPTION_NAMES: GameWindowDebugOverlaySetVisible( value ); break;
 		case DEBUG_OPTION_FRAMES: GameWindowDebugOverlaySetShowFrames( value ); break;
 		case DEBUG_OPTION_PERF:   PerfOverlaySetVisible( value ); break;
+		case DEBUG_OPTION_TREES:  PerfOverlaySetDetailGroupVisible( PERF_DETAIL_TREES, value ); break;
+		case DEBUG_OPTION_PROPS:  PerfOverlaySetDetailGroupVisible( PERF_DETAIL_PROPS, value ); break;
 		default: break;
 	}
 

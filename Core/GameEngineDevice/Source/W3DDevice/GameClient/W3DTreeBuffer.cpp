@@ -65,6 +65,7 @@ enum
 #include "Common/FileSystem.h"
 #include "Common/file.h"
 #include "Common/PerfTimer.h"
+#include "Common/PerfOverlay.h"
 #include "Common/Player.h"
 #include "Common/PlayerList.h"
 #include "GameLogic/ScriptEngine.h"
@@ -297,6 +298,7 @@ it's sortKey */
 void W3DTreeBuffer::cull(const CameraClass * camera)
 {
 	Int curTree;
+	Int numVisible = 0;
 
 	// Calculate the vector direction that the camera is looking at.
 	const Matrix3D &camera_matrix = camera->Get_Transform();
@@ -309,6 +311,9 @@ void W3DTreeBuffer::cull(const CameraClass * camera)
 	for (curTree=0; curTree<m_numTrees; curTree++) {
 		Bool doKey = false;	// We calculate the key when a tree becomes visible.
 		Bool visible = !camera->Cull_Sphere(m_trees[curTree].bounds);
+		if (visible) {
+			numVisible++;
+		}
 		if (visible != m_trees[curTree].visible) {
 			m_trees[curTree].visible=visible;
 			m_anythingChanged = true;
@@ -323,7 +328,20 @@ void W3DTreeBuffer::cull(const CameraClass * camera)
 			m_trees[curTree].sortKey = Vector3::Dot_Product(m_trees[curTree].location, m_cameraLookAtVector);
 		}
 	}
+
+	// TheSuperHackers @feature Report the number of visible trees to the performance overlay.
+	m_numVisibleTrees = numVisible;
+
 	m_updateAllKeys = false;
+}
+
+//-------------------------------------------------------------------------------------------------
+// The index of the performance counter for the tree rendering.
+//-------------------------------------------------------------------------------------------------
+Int W3DTreeBuffer::GetTreePerfCounterIndex()
+{
+	static const Int index = PerfOverlayRegister("Render.Trees", PERF_DETAIL_TREES);
+	return index;
 }
 //=============================================================================
 // W3DTreeBuffer::getPartitionBucket
@@ -1031,6 +1049,7 @@ for the trees. */
 W3DTreeBuffer::W3DTreeBuffer()
 {
 	m_initialized = false;
+	m_numVisibleTrees = 0;
 	Int i;
 	for	(i=0; i<MAX_BUFFERS; i++) {
 		m_vertexTree[i] = nullptr;
@@ -1471,6 +1490,12 @@ DECLARE_PERF_TIMER(Tree_Render)
 void W3DTreeBuffer::drawTrees(CameraClass * camera, RefRenderObjListIterator *pDynamicLightsIterator)
 {
 	USE_PERF_TIMER(Tree_Render)
+
+	// TheSuperHackers @feature Report the tree rendering time and the number of visible trees
+	// to the performance overlay.
+	static const Int treePerfIndex = GetTreePerfCounterIndex();
+	PerfOverlayScope treePerfScope(treePerfIndex);
+
 	if (!m_isTerrainPass) {
 		return;
 	}
@@ -1514,6 +1539,9 @@ void W3DTreeBuffer::drawTrees(CameraClass * camera, RefRenderObjListIterator *pD
 	if (m_updateAllKeys) {
 		cull(camera);
 	}
+
+	// TheSuperHackers @feature Report the number of visible trees to the performance overlay.
+	PerfOverlaySetValue(treePerfIndex, m_numVisibleTrees, m_numTrees);
 
 	Int curTree;
 	// Draw tree shadows.

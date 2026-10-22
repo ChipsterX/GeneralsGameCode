@@ -135,6 +135,7 @@ protected:
 
 	TProp	m_props[MAX_PROPS];			///< The prop buffer.  All props are stored here.
 	Int			m_numProps;						///< Number of props in m_props.
+	Int			m_numVisibleProps;				///< Number of props that are visible, for the performance overlay.
 	Bool		m_anythingChanged;	///< Set to true if visibility or sorting changed.
 	Bool		m_initialized;		///< True if the subsystem initialized.
 	Bool		m_doCull;
@@ -145,4 +146,7 @@ protected:
 	LightClass *m_light;
 
 	void cull(CameraClass * camera);						 ///< Culls the props.
+
+	/// TheSuperHackers @feature The index of the performance counter for the prop rendering.
+	static Int GetPropPerfCounterIndex();
 };

@@ -45,16 +45,22 @@ struct PerfCounter
 	const char	*m_name;			///< name of the counter (a static string)
 	Int64		m_ticks;			///< ticks accumulated during the current frame
 	Int			m_calls;			///< calls accumulated during the current frame
-	Int64		m_lastTicks;		///< ticks of the last published frame
-	Int			m_lastCalls;		///< calls of the last published frame
+	Int64		m_lastTicks;		///< smoothed ticks of the last published interval
+	Int			m_lastCalls;		///< calls of the last published interval
 	Int64		m_peakTicks;		///< worst case ticks seen so far
+	Int			m_value;			///< value accumulated during the current frame
+	Int			m_lastValue;		///< value of the last published interval
+	Int			m_valueTotal;		///< total number the value relates to, 0 if there is none
+	Int			m_lastValueTotal;	///< total number of the last published interval
+	Int			m_accumValueTotal;	///< totals accumulated since the last publish
+	UnsignedInt	m_detailGroup;		///< the group of detail counters, 0 if always shown
+	Int64		m_accumTicks;		///< ticks accumulated since the last publish
+	Int			m_accumCalls;		///< calls accumulated since the last publish
+	Int			m_accumValue;		///< values accumulated since the last publish
 };
 
 //-------------------------------------------------------------------------------------------------
 enum { MAX_COUNTERS = PERF_OVERLAY_MAX_COUNTERS };
-
-// The key that toggles the overlay.
-const KeyDefType PERF_OVERLAY_TOGGLE_KEY = KEY_F11;
 
 // Position and look of the overlay.
 enum
@@ -62,14 +68,20 @@ enum
 	PERF_OVERLAY_POS_X = 8,			///< pixels from the left screen edge
 	PERF_OVERLAY_POS_Y = 64,			///< pixels from the top screen edge
 	PERF_OVERLAY_PADDING = 5,		///< padding around the text, in pixels
+	PERF_OVERLAY_PUBLISH_MS = 250,	///< how often the numbers are refreshed, in milliseconds
+	PERF_OVERLAY_SMOOTHING = 4,		///< weight of the newest sample, bigger means less smoothing
+	PERF_OVERLAY_SORT_BUCKET_MS = 1,	///< rows only change places when they differ by more than this
 };
 
 PerfCounter s_counters[MAX_COUNTERS];
 Int s_numCounters = 0;
 Bool s_visible = TRUE;
-Bool s_toggleKeyIsDown = FALSE;
+UnsignedInt s_detailVisibleMask = 0;
 Int64 s_lastEndFrameTicks = 0;
-Int64 s_frameTicks = 0;		///< duration of the last frame, in ticks
+Int64 s_frameTicks = 0;		///< smoothed duration of a frame, in ticks
+Int64 s_frameAccumTicks = 0;	///< frame durations accumulated since the last publish, in ticks
+Int64 s_lastPublishTicks = 0;	///< time of the last publish, in ticks
+Int s_publishFrames = 0;		///< frames seen since the last publish
 DisplayString *s_displayString = nullptr;
 
 //-------------------------------------------------------------------------------------------------
@@ -92,6 +104,15 @@ double TicksToMs(Int64 ticks, Int64 ticksPerSec)
 		return 0.0;
 	}
 	return (double)ticks * 1000.0 / (double)ticksPerSec;
+}
+
+//-------------------------------------------------------------------------------------------------
+// Returns the value the counters are sorted by. The time is rounded to the given bucket,
+// so that close counters keep their relative order instead of swapping on every refresh.
+//-------------------------------------------------------------------------------------------------
+Int64 GetSortKey(const PerfCounter &counter, Int64 bucketTicks)
+{
+	return (bucketTicks > 0) ? (counter.m_lastTicks / bucketTicks) : counter.m_lastTicks;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -132,43 +153,10 @@ DisplayString *GetDisplayString()
 	return s_displayString;
 }
 
-//-------------------------------------------------------------------------------------------------
-// Toggles the overlay when the hotkey is pressed.
-// The keyboard has already consumed the key events by the time we get here,
-// so the key state is inspected directly and the toggle only happens once per press.
-//-------------------------------------------------------------------------------------------------
-void CheckToggleHotkey()
-{
-	if (TheKeyboard == nullptr)
-	{
-		return;
-	}
-
-	for (KeyboardIO *io = TheKeyboard->getFirstKey(); io->key != KEY_NONE; ++io)
-	{
-		if (io->key != PERF_OVERLAY_TOGGLE_KEY)
-		{
-			continue;
-		}
-
-		if (BitIsSet(io->state, KEY_STATE_UP))
-		{
-			// The key was released, so the next press toggles the overlay again.
-			s_toggleKeyIsDown = FALSE;
-		}
-		else if (BitIsSet(io->state, KEY_STATE_DOWN) && !s_toggleKeyIsDown)
-		{
-			// The key was pressed. Only toggle once, no matter how long it is held.
-			s_toggleKeyIsDown = TRUE;
-			PerfOverlayToggle();
-		}
-	}
-}
-
 }
 
 //-------------------------------------------------------------------------------------------------
-Int PerfOverlayRegister(const char *name)
+Int PerfOverlayRegister(const char *name, UnsignedInt detailGroup)
 {
 	for (Int i = 0; i < s_numCounters; ++i)
 	{
@@ -191,6 +179,15 @@ Int PerfOverlayRegister(const char *name)
 	s_counters[index].m_lastTicks = 0;
 	s_counters[index].m_lastCalls = 0;
 	s_counters[index].m_peakTicks = 0;
+	s_counters[index].m_value = 0;
+	s_counters[index].m_lastValue = 0;
+	s_counters[index].m_detailGroup = detailGroup;
+	s_counters[index].m_accumTicks = 0;
+	s_counters[index].m_accumCalls = 0;
+	s_counters[index].m_accumValue = 0;
+	s_counters[index].m_valueTotal = 0;
+	s_counters[index].m_lastValueTotal = 0;
+	s_counters[index].m_accumValueTotal = 0;
 
 	return index;
 }
@@ -218,6 +215,86 @@ void PerfOverlayAddCall(Int index)
 }
 
 //-------------------------------------------------------------------------------------------------
+void PerfOverlaySetValue(Int index, Int value, Int total)
+{
+	if (index < 0 || index >= s_numCounters)
+	{
+		return;
+	}
+
+	s_counters[index].m_value = value;
+	s_counters[index].m_valueTotal = total;
+}
+
+//-------------------------------------------------------------------------------------------------
+void PerfOverlaySetDetailGroupVisible(UnsignedInt detailGroup, Bool visible)
+{
+	if (visible)
+	{
+		s_detailVisibleMask |= detailGroup;
+	}
+	else
+	{
+		s_detailVisibleMask &= ~detailGroup;
+	}
+}
+
+//-------------------------------------------------------------------------------------------------
+Bool PerfOverlayIsDetailGroupVisible(UnsignedInt detailGroup)
+{
+	return (s_detailVisibleMask & detailGroup) != 0;
+}
+
+//-------------------------------------------------------------------------------------------------
+// Publishes the numbers of the last interval. The numbers are averaged over the interval and smoothed
+// over the previous intervals, so the table does not flicker on every frame.
+//-------------------------------------------------------------------------------------------------
+static void PublishCounters()
+{
+	const Int numFrames = (s_publishFrames > 0) ? s_publishFrames : 1;
+
+	for (Int i = 0; i < s_numCounters; ++i)
+	{
+		PerfCounter &counter = s_counters[i];
+
+		const Int64 avgTicks = counter.m_accumTicks / numFrames;
+		counter.m_lastCalls = (counter.m_accumCalls + numFrames / 2) / numFrames;
+		counter.m_lastValue = (counter.m_accumValue + numFrames / 2) / numFrames;
+		counter.m_lastValueTotal = (counter.m_accumValueTotal + numFrames / 2) / numFrames;
+
+		if (counter.m_lastTicks == 0)
+		{
+			// The very first sample is taken as is, so the numbers settle right away.
+			counter.m_lastTicks = avgTicks;
+		}
+		else
+		{
+			counter.m_lastTicks =
+				(counter.m_lastTicks * (PERF_OVERLAY_SMOOTHING - 1) + avgTicks) / PERF_OVERLAY_SMOOTHING;
+		}
+
+		counter.m_accumTicks = 0;
+		counter.m_accumCalls = 0;
+		counter.m_accumValue = 0;
+		counter.m_accumValueTotal = 0;
+	}
+
+	const Int64 avgFrameTicks = s_frameAccumTicks / numFrames;
+	if (s_frameTicks == 0)
+	{
+		s_frameTicks = avgFrameTicks;
+	}
+	else
+	{
+		s_frameTicks =
+			(s_frameTicks * (PERF_OVERLAY_SMOOTHING - 1) + avgFrameTicks) / PERF_OVERLAY_SMOOTHING;
+	}
+
+	s_frameAccumTicks = 0;
+	s_publishFrames = 0;
+}
+
+//-------------------------------------------------------------------------------------------------
 void PerfOverlayEndFrame()
 {
 	Int64 now = 0;
@@ -225,30 +302,55 @@ void PerfOverlayEndFrame()
 
 	if (s_lastEndFrameTicks != 0 && now > s_lastEndFrameTicks)
 	{
-		s_frameTicks = now - s_lastEndFrameTicks;
+		s_frameAccumTicks += now - s_lastEndFrameTicks;
 	}
 	s_lastEndFrameTicks = now;
 
 	for (Int i = 0; i < s_numCounters; ++i)
 	{
-		s_counters[i].m_lastTicks = s_counters[i].m_ticks;
-		s_counters[i].m_lastCalls = s_counters[i].m_calls;
+		PerfCounter &counter = s_counters[i];
 
-		if (s_counters[i].m_lastTicks > s_counters[i].m_peakTicks)
+		if (counter.m_ticks > counter.m_peakTicks)
 		{
-			s_counters[i].m_peakTicks = s_counters[i].m_lastTicks;
+			counter.m_peakTicks = counter.m_ticks;
 		}
 
-		s_counters[i].m_ticks = 0;
-		s_counters[i].m_calls = 0;
+		counter.m_accumTicks += counter.m_ticks;
+		counter.m_accumCalls += counter.m_calls;
+		counter.m_accumValue += counter.m_value;
+		counter.m_accumValueTotal += counter.m_valueTotal;
+
+		counter.m_ticks = 0;
+		counter.m_calls = 0;
+		counter.m_value = 0;
+		counter.m_valueTotal = 0;
 	}
+
+	++s_publishFrames;
+
+	const Int64 ticksPerSec = GetTicksPerSec();
+	const Int64 publishInterval = (ticksPerSec > 0)
+		? ticksPerSec * PERF_OVERLAY_PUBLISH_MS / 1000
+		: 0;
+
+	if (s_lastPublishTicks == 0)
+	{
+		s_lastPublishTicks = now;
+		return;
+	}
+
+	if (publishInterval > 0 && now - s_lastPublishTicks < publishInterval)
+	{
+		return;
+	}
+
+	s_lastPublishTicks = now;
+	PublishCounters();
 }
 
 //-------------------------------------------------------------------------------------------------
 void PerfOverlayDraw()
 {
-	CheckToggleHotkey();
-
 	if (!s_visible)
 	{
 		return;
@@ -270,21 +372,32 @@ void PerfOverlayDraw()
 	const double frameMs = TicksToMs(s_frameTicks, ticksPerSec);
 
 	AsciiString text;
-	text.format("Perf %.2f ms/frame (F11 hides)\n", frameMs);
+	text.format("Perf %.2f ms/frame\n", frameMs);
 
-	// Sort the counters by the time they spent in the last frame, the heaviest one first.
+	// The sort keys are rounded to whole milliseconds, so that the rows do not change places
+	// because of the noise of a single interval.
+	const Int64 bucketTicks = (ticksPerSec * PERF_OVERLAY_SORT_BUCKET_MS) / 1000;
+
+	// Sort the counters by the time they spent recently, the heaviest one first.
 	Int order[MAX_COUNTERS];
+	Int numShown = 0;
 	for (Int i = 0; i < s_numCounters; ++i)
 	{
-		order[i] = i;
+		// The detail counters are only shown when their group is enabled.
+		if (s_counters[i].m_detailGroup != 0 &&
+			(s_detailVisibleMask & s_counters[i].m_detailGroup) == 0)
+		{
+			continue;
+		}
+		order[numShown++] = i;
 	}
 
-	for (Int i = 1; i < s_numCounters; ++i)
+	for (Int i = 1; i < numShown; ++i)
 	{
 		const Int index = order[i];
-		const Int64 ticks = s_counters[index].m_lastTicks;
+		const Int64 key = GetSortKey(s_counters[index], bucketTicks);
 		Int j = i - 1;
-		while (j >= 0 && s_counters[order[j]].m_lastTicks < ticks)
+		while (j >= 0 && GetSortKey(s_counters[order[j]], bucketTicks) < key)
 		{
 			order[j + 1] = order[j];
 			--j;
@@ -292,26 +405,44 @@ void PerfOverlayDraw()
 		order[j + 1] = index;
 	}
 
+	AsciiString countText;
 	AsciiString line;
-	for (Int i = 0; i < s_numCounters; ++i)
+	for (Int i = 0; i < numShown; ++i)
 	{
 		const PerfCounter &counter = s_counters[order[i]];
 		const double ms = TicksToMs(counter.m_lastTicks, ticksPerSec);
 		const double peakMs = TicksToMs(counter.m_peakTicks, ticksPerSec);
 		const double percent = (frameMs > 0.0) ? (ms * 100.0 / frameMs) : 0.0;
 
-		line.format("%-22s %7.3f ms %5.1f%% %6d calls  peak %7.3f ms",
-			counter.m_name, ms, percent, counter.m_lastCalls, peakMs);
+		// The count of a counter can relate to a total number, e.g. the visible and all trees.
+		if (counter.m_lastValueTotal > 0)
+		{
+			countText.format("%d/%d", counter.m_lastValue, counter.m_lastValueTotal);
+		}
+		else
+		{
+			countText.format("%d", counter.m_lastValue);
+		}
+
+		line.format("%-22s %7.3f ms %5.1f%% %6d calls %11s  peak %7.3f ms",
+			counter.m_name, ms, percent, counter.m_lastCalls, countText.str(), peakMs);
 		text.concat(line);
-		if (i + 1 < s_numCounters)
+		if (i + 1 < numShown)
 		{
 			text.concat("\n");
 		}
 	}
 
-	UnicodeString unicodeText;
-	unicodeText.translate(text);
-	displayString->setText(unicodeText);
+	// The numbers only change a few times per second, so the text is only rendered when it changed.
+	static AsciiString s_lastText;
+	if (strcmp(s_lastText.str(), text.str()) != 0)
+	{
+		s_lastText = text;
+
+		UnicodeString unicodeText;
+		unicodeText.translate(text);
+		displayString->setText(unicodeText);
+	}
 
 	Int width = 0;
 	Int height = 0;
